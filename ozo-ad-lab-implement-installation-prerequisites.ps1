@@ -46,19 +46,19 @@ Class Main {
         $this.ozoLogger = (New-OZOLogger)
         # Call ValidateEnvironment to determine if we can proceed
         If ($this.ValidateEnvironment() -eq $true) {
-            # Determine if the Hyper-V features are not installed
-            If ($this.InstallHyperV($FeatureName) -eq $false) {
-                # Hyper-V features are not installed
+            # Determine if thefeature is not installed
+            If ($this.InstallFeature($FeatureName) -eq $false) {
+                # Feature not installed
                 $this.prerequisitesSatisfied = $false
             } Else {
-                # Hyper-V features are installed; determine if a restart is required
+                # Feature is installed; determine if a restart is required
                 If ($this.RestartRequired($FeatureName) -eq $true) {
                     # Restart is required
                     $this.prerequisitesSatisfied = $false
                 }
             }
-            # Determine if the user not is added to the local Hyper-V Administrators group
-            If ($this.ManageLocalHyperVAdministratorsGroup(([System.Security.Principal.WindowsIdentity]::GetCurrent().Name),$LocalGroup) -eq $false) { $this.prerequisitesSatisfied = $false }
+            # Determine if the user not is added to the local group
+            If ($this.ManageLocalGroup(([System.Security.Principal.WindowsIdentity]::GetCurrent().Name),$LocalGroup) -eq $false) { $this.prerequisitesSatisfied = $false }
             # Determine if the VM switches are not created
             If ($this.CreateVMSwitches() -eq $false) { $this.prerequisitesSatisfied = $false }
             # Determine if all prerequisites were met
@@ -84,12 +84,12 @@ Class Main {
         # Return
         return $Return
     }
-    # METHODS: Install Hyper-V method
-    Hidden [Boolean] InstallHyperV($FeatureName) {
+    # METHODS: Install feature method
+    Hidden [Boolean] InstallFeature($FeatureName) {
         # Control variable
         [Boolean] $Return = $true
         # Determine if the feature is present
-        If ([Boolean](Get-WindowsOptionalFeature -Online -FeatureName $FeatureName) -eq $false) {
+        If ([Boolean](Get-WindowsOptionalFeature -Online -FeatureName $FeatureName -ErrorAction SilentlyContinue) -eq $false) {
             # Report
             $this.ozoLogger.Write(("Installing " + $FeatureName + " feature."),"Information")
             # Feature is not present; try to install it
@@ -105,11 +105,11 @@ Class Main {
         # Return
         return $Return
     }
-    # METHODS: Reboot required method
+    # METHODS: Restart required method
     Hidden [Boolean] RestartRequired($FeatureName) {
         # Control variable
         [Boolean] $Return = $false
-        # Determine if feature is present
+        # Determine if a restart is required
         If ((Get-WindowsOptionalFeature -Online -FeatureName $FeatureName).RestartRequired -eq "Required") {
             # Restart is required
             $this.ozoLogger.Write(("Please restart to complete the " + $FeatureName + " feature installation and then run this script again to continue."),"Warning")
@@ -123,11 +123,11 @@ Class Main {
         # Return
         return $Return
     }
-    # METHODS: Manage local Hyper-V Administrators group membership
-    Hidden [Boolean] ManageLocalHyperVAdministratorsGroup($CurrentUser,$LocalGroup) {
+    # METHODS: Manage local group membership
+    Hidden [Boolean] ManageLocalGroup($CurrentUser,$LocalGroup) {
         # Control variable
         [Boolean] $Return = $true
-        # Determine if the current user is a member of the local Hyper-V Administrators group
+        # Determine if the current user is a member of the local group
         If ((Get-LocalGroupMember -Name $LocalGroup).Name -NotContains $CurrentUser) {
             # Report
             $this.ozoLogger.Write(("Adding user to the local " + $LocalGroup + " group."),"Information")
