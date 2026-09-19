@@ -1,7 +1,7 @@
-#Requires -Modules @{ModuleName="OZO";ModuleVersion="1.5.1"},@{ModuleName="OZOLogger";ModuleVersion="1.1.0"} -RunAsAdministrator
+#Requires -Modules @{ModuleName="OZO"; ModuleVersion="1.7.0"},OZOLogger -RunAsAdministrator
 
 <#PSScriptInfo
-    .VERSION 0.1.0
+    .VERSION 1.0.0
     .GUID 63ebd3a1-0d72-4090-9226-10db30d2e82f
     .AUTHOR Andy Lievertz <alievertz@onezeroone.dev>
     .COMPANYNAME One Zero One
@@ -28,78 +28,50 @@
     https://github.com/onezeroone-dev/OZO-AD-Lab-Implement-Installation-Prerequisites/blob/main/README.md
 #>
 
-Class ADLIP {
-    # PROPERTIES: Strings
-    [String]  $currentUser       = $null
-    [String]  $downloadsDir      = $null
-    [String]  $featureName       = $null
-    [String]  $localGroup        = $null
+#PARAMETERS
+[CmdletBinding()] Param(
+    [Parameter(Mandatory=$false)][String] $FeatureName = "Microsoft-Hyper-V-All",
+    [Parameter(Mandatory=$false)][String] $LocalGroup = "Hyper-V Administrators"
+)
+
+# CLASSES
+Class Main {
+    # PROPERTIES: Booleans
+    [Boolean] $prerequisitesSatisfied = $true
     # PROPERTIES: PSCustomObjects
     [PSCustomObject] $ozoLogger = @()
-    # METHODS
-    # Constructor method
-    ADLIP() {
-        # Set properties
-        $this.currentUser  = ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)
-        $this.downloadsDir = (Join-Path -Path $Env:USERPROFILE -ChildPath "Downloads")
-        $this.featureName  = "Microsoft-Hyper-V-All"
-        $this.localGroup   = "Hyper-V Administrators"
+    # METHODS: Constructor method
+    Main($FeatureName,$LocalGroup) {
         # Create a logger object
         $this.ozoLogger = (New-OZOLogger)
-        # Declare ourselves to the world
-        $this.ozoLogger.Write("Process starting.","Information")
         # Call ValidateEnvironment to determine if we can proceed
         If ($this.ValidateEnvironment() -eq $true) {
-            # Environment validates; report
-            $this.ozoLogger.Write("Environment validates.","Information")
-            # Call ProcessPrerequisites to ...process the prerequisites
-            $this.ProcessPrerequisites()
+            # Determine if thefeature is not installed
+            If ($this.InstallFeature($FeatureName) -eq $false) {
+                # Feature not installed
+                $this.prerequisitesSatisfied = $false
+            } Else {
+                # Feature is installed; determine if a restart is required
+                If ($this.RestartRequired($FeatureName) -eq $true) {
+                    # Restart is required
+                    $this.prerequisitesSatisfied = $false
+                }
+            }
+            # Determine if the user not is added to the local group
+            If ($this.ManageLocalGroup(([System.Security.Principal.WindowsIdentity]::GetCurrent().Name),$LocalGroup) -eq $false) { $this.prerequisitesSatisfied = $false }
+            # Determine if the VM switches are not created
+            If ($this.CreateVMSwitches() -eq $false) { $this.prerequisitesSatisfied = $false }
+            # Determine if all prerequisites were met
+            If ($this.prerequisitesSatisfied -eq $true) {
+                # All prerequisites are satisfied
+                $this.ozoLogger.Write("All prerequisites are satisfied. Please see https://onezeroone.dev/active-directory-lab-part-iii-create-the-virtual-machines for the next steps.","Information")
+            }
         } Else {
             # Environment did not validate
             $this.ozoLogger.Write("The environment did not validate.","Error")
         }
-        # Bid adieu to the world
-        $this.ozoLogger.Write("Process complete.","Information")
     }
-    # Process prerequisites method
-    Hidden [Void] ProcessPrerequisites() {
-        # Environment validates; install Hyper-V features
-        $this.ozoLogger.Write("Installing Hyper-V features.","Information")
-        If ($this.InstallHyperV() -eq $true) {
-            # Hyper-V features are installed; determine if a reboot is not required
-            $this.ozoLogger.Write("Determining if a restart is required.","Information")
-            If ($this.RestartRequired() -eq $false) {
-                # Restart is not required; add the local user to the Hyper-V Administrators group
-                $this.ozoLogger.Write("Adding user to the local Hyper-V Administrators group.","Information")
-                If ($this.ManageLocalHyperVAdministratorsGroup() -eq $true) {
-                    # Local user is added to the local Hyper-V Administrators group; create the VM switches
-                    $this.ozoLogger.Write("Creating the Hyper-V VMSwitches.","Information")
-                    If ($this.CreateVMSwitches() -eq $true) {
-                        # VM switches are created; report all prerequisites satisfied
-                        $this.ozoLogger.Write("All prerequisites are satisfied. Please see https://onezeroone.dev/active-directory-lab-customize-the-windows-installer-isos for the next steps.","Information")
-                    } Else {
-                        # VMSwitch creation error
-                        $this.ozoLogger.Write("Error creating the VM switches. Please manually create these switches then run this script again to continue. See https://onezeroone.dev/active-directory-lab-part-ii-customization-prerequisites/ for more information.","Error")
-                    }
-                } Else {
-                    # Error adding user to local Hyper-V Administrators group
-                    $this.ozoLogger.Write(("Failure adding user " + $this.currentUser + " to the " + $this.localGroup + " group. Please manually add this user to this group then run this script again to continue. See https://onezeroone.dev/active-directory-lab-part-ii-customization-prerequisites/ for more information."),"Error")
-                }
-            } Else {
-                # Restart is required
-                $this.ozoLogger.Write("Please restart to complete the feature installation and then run this script again to continue.","Warning")
-                # Get restart decision
-                If ((Get-OZOYesNo) -eq "y") {
-                    # User elects to restart
-                    Restart-Computer
-                }
-            }
-        } Else {
-            # Error installing Hyper-V Feature
-            $this.ozoLogger.Write(("Error installing the " + $this.featureName + " feature. Please manually install this feature and then run this script again to continue. See https://onezeroone.dev/active-directory-lab-part-ii-customization-prerequisites/ for more information."),"Error")
-        }
-    }
-    # Environment validation method
+    # METHODS: Environment validation method
     Hidden [Boolean] ValidateEnvironment() {
         # Control variable
         [Boolean] $Return = $true
@@ -112,101 +84,115 @@ Class ADLIP {
         # Return
         return $Return
     }
-    # Install Hyper-V method
-    Hidden [Boolean] InstallHyperV() {
+    # METHODS: Install feature method
+    Hidden [Boolean] InstallFeature($FeatureName) {
         # Control variable
         [Boolean] $Return = $true
         # Determine if the feature is present
-        If ([Boolean](Get-WindowsOptionalFeature -Online -FeatureName $this.featureName) -eq $false) {
+        If ([Boolean](Get-WindowsOptionalFeature -Online -FeatureName $FeatureName -ErrorAction SilentlyContinue) -eq $false) {
+            # Report
+            $this.ozoLogger.Write(("Installing " + $FeatureName + " feature."),"Information")
             # Feature is not present; try to install it
             Try {
-                Enable-WindowsOptionalFeature -Online -FeatureName $this.featureName -ErrorAction Stop
+                Enable-WindowsOptionalFeature -Online -FeatureName $FeatureName -ErrorAction Stop
                 # Success
             } Catch {
                 # Failure
+                $this.ozoLogger.Write(("Error installing the " + $FeatureName + " feature. Please manually install this feature and then run this script again to continue. See https://onezeroone.dev/active-directory-lab-part-ii-customization-prerequisites/ for more information."),"Error")
                 $Return = $false
             }
         }
         # Return
         return $Return
     }
-    # Reboot required method
-    Hidden [Boolean] RestartRequired() {
+    # METHODS: Restart required method
+    Hidden [Boolean] RestartRequired($FeatureName) {
         # Control variable
         [Boolean] $Return = $false
-        # Determine if feature is present
-        If ((Get-WindowsOptionalFeature -Online -FeatureName $this.featureName).RestartRequired -eq "Required") {
+        # Determine if a restart is required
+        If ((Get-WindowsOptionalFeature -Online -FeatureName $FeatureName).RestartRequired -eq "Required") {
             # Restart is required
-            $this.Return = $true   
+            $this.ozoLogger.Write(("Please restart to complete the " + $FeatureName + " feature installation and then run this script again to continue."),"Warning")
+            $Return = $true
+            # Get restart decision
+            If ((Get-OZOYesNo) -eq "y") {
+                # User elects to restart
+                Restart-Computer
+            }
         }
         # Return
         return $Return
     }
-    # Manage local Hyper-V Administrators group membership
-    Hidden [Boolean] ManageLocalHyperVAdministratorsGroup() {
+    # METHODS: Manage local group membership
+    Hidden [Boolean] ManageLocalGroup($CurrentUser,$LocalGroup) {
         # Control variable
         [Boolean] $Return = $true
-        # Determine if the current user is a member of the local Hyper-V Administrators group
-        If ((Get-LocalGroupMember -Name $this.localGroup).Name -NotContains $this.currentUser) {
+        # Determine if the current user is a member of the local group
+        If ((Get-LocalGroupMember -Name $LocalGroup).Name -NotContains $CurrentUser) {
+            # Report
+            $this.ozoLogger.Write(("Adding user to the local " + $LocalGroup + " group."),"Information")
             # User is not in the local group; try to add them
             Try {
-                Add-LocalGroupMember -Group "Hyper-V Administrators" -Member $this.currentUser
+                Add-LocalGroupMember -Group $LocalGroup -Member $CurrentUser -ErrorAction Stop
                 # Success
             } Catch {
                 # Failure
+                $this.ozoLogger.Write(("Failure adding user " + $CurrentUser + " to the " + $LocalGroup + " group. Please manually add this user to this group then run this script again to continue. See https://onezeroone.dev/active-directory-lab-part-ii-customization-prerequisites/ for more information."),"Error")
                 $Return = $false
             }
         }
         # Return
         return $Return
     }
-    # Create VM switches method
+    # METHODS: Create VM switches method
     Hidden [Boolean] CreateVMSwitches() {
         # Control variable
-        [Boolean] $Return          = $true
+        [Boolean] $Return = $true
+        # Local variables
         [String]  $externalAdapter = $null
-        # Determine if the private switch already exists
-        If ([Boolean](Get-VMSwitch -Name "AD Lab Private") -eq $false) {
-            # Private switch does not exist; try to create it
-            Try {
-                New-VMSwitch -Name "AD Lab Private" -SwitchType Private -ErrorAction Stop
-                # Success
-            } Catch {
-                # Failure
-                $Return = $false
+        # Determine if the Get-VMSwitch cmdlet is available
+        If ([Boolean](Get-Command -Name Get-VMSwitch -ErrorAction SilentlyContinue) -eq $true) {
+            # Get-VMSwitch cmdlet is available; determine if the private switch already exists
+            If ([Boolean](Get-VMSwitch -Name "OZO AD Lab Private") -eq $false) {
+                # Report
+                $this.ozoLogger.Write("Creating the Hyper-V OZO AD Lab Private VMSwitch.","Information")
+                # Private switch does not exist; try to create it
+                Try {
+                    New-VMSwitch -Name "OZO AD Lab Private" -SwitchType Private -ErrorAction Stop
+                    # Success
+                } Catch {
+                    # Failure
+                    $this.ozoLogger.Write("Error creating the VM switches. You may need to log out and back in to refresh your group membership. If that does not help, please manually create these switches. Then run this script again to continue. See https://onezeroone.dev/active-directory-lab-part-ii-customization-prerequisites/ for more information.","Error")
+                    $Return = $false
+                }
             }
-        }
-        # Determine if the external switch already exists
-        If ([Boolean](Get-VMSwitch -Name "AD Lab External") -eq $false) {
-            # External switch does not exist; call Get-NetAdapter to display available network connections
-            Write-Host (Get-NetAdapter)
-            # Prompt the user for the name of the external network connection until they correctly identify an adapter
-            Do {
-                $externalAdapter = (Read-Host "Above is the output of the Get-NetAdapter command. Type the Name of the network adapter that corresponds with your external network (Internet) connection")
-            } Until ((Get-NetAdapter).Name -Contains $externalAdapter)
-            # Try to create the external switch
-            Try {
-                New-VMSwitch -Name "AD Lab External" -NetAdapterName $externalAdapter -ErrorAction Stop
-                # Success
-            } Catch {
-                # Failure
-                $Return = $false
+            # Determine if the external switch already exists
+            If ([Boolean](Get-VMSwitch -Name "OZO AD Lab External") -eq $false) {
+                # Report
+                $this.ozoLogger.Write("Creating the Hyper-V OZO AD Lab External VMSwitch.","Information")
+                # External switch does not exist; call Get-NetAdapter to display available network connections
+                Get-NetAdapter | Out-Host
+                # Prompt the user for the name of the external network connection until they correctly identify an adapter
+                Do {
+                    $externalAdapter = (Read-Host "Above is the output of the Get-NetAdapter command. Type the Name of the network adapter that corresponds with your external network (Internet) connection")
+                } Until ((Get-NetAdapter).Name -Contains $externalAdapter)
+                # Try to create the external switch
+                Try {
+                    New-VMSwitch -Name "OZO AD Lab External" -NetAdapterName $externalAdapter -ErrorAction Stop
+                    # Success
+                } Catch {
+                    # Failure
+                    $Return = $false
+                }
             }
+        } Else {
+            # Get-VMSwitch cmdlet is not available
+            $Return = $false
         }
         # Return
         return $Return
     }
-}
-
-Function Get-OZOYesNo {
-    # Prompt the user to restart and return the lowercase of the first letter of their response
-    [String]$response = $null
-    Do {
-        $response = (Read-Host "(Y/N)")[0].ToLower()
-    } Until ($response -eq "y" -Or $response -eq "n")
-    # Return response
-    return $response
 }
 
 # MAIN
-[ADLIP]::new() | Out-Null
+[Main]::new($FeatureName,$LocalGroup) | Out-Null
