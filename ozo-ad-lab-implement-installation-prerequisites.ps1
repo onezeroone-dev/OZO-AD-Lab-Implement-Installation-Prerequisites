@@ -36,33 +36,33 @@
 
 # CLASSES
 Class Main {
+    # PROPERTIES: Booleans
+    [Boolean] $prerequisitesSatisfied = $true
     # PROPERTIES: PSCustomObjects
     [PSCustomObject] $ozoLogger = @()
     # METHODS: Constructor method
     Main($FeatureName,$LocalGroup) {
         # Create a logger object
         $this.ozoLogger = (New-OZOLogger)
-        # Declare ourselves to the world
-        $this.ozoLogger.Write("Process starting.","Information")
         # Call ValidateEnvironment to determine if we can proceed
         If ($this.ValidateEnvironment() -eq $true) {
             # Determine if the Hyper-V features are not installed
             If ($this.InstallHyperV($FeatureName) -eq $false) {
                 # Hyper-V features are not installed
-                $this.prerequisiteSatisfied = $false
+                $this.prerequisitesSatisfied = $false
             } Else {
                 # Hyper-V features are installed; determine if a restart is required
                 If ($this.RestartRequired($FeatureName) -eq $true) {
                     # Restart is required
-                    $this.prerequisiteSatisfied = $false
+                    $this.prerequisitesSatisfied = $false
                 }
             }
             # Determine if the user not is added to the local Hyper-V Administrators group
-            If ($this.ManageLocalHyperVAdministratorsGroup(([System.Security.Principal.WindowsIdentity]::GetCurrent().Name),$LocalGroup) -eq $false) { $this.prerequisiteSatisfied = $false }
+            If ($this.ManageLocalHyperVAdministratorsGroup(([System.Security.Principal.WindowsIdentity]::GetCurrent().Name),$LocalGroup) -eq $false) { $this.prerequisitesSatisfied = $false }
             # Determine if the VM switches are not created
-            If ($this.CreateVMSwitches() -eq $false) { $this.prerequisiteSatisfied = $false }
+            If ($this.CreateVMSwitches() -eq $false) { $this.prerequisitesSatisfied = $false }
             # Determine if all prerequisites were met
-            If ($this.prerequisiteSatisfied -eq $true) {
+            If ($this.prerequisitesSatisfied -eq $true) {
                 # All prerequisites are satisfied
                 $this.ozoLogger.Write("All prerequisites are satisfied. Please see https://onezeroone.dev/active-directory-lab-part-iii-create-the-virtual-machines for the next steps.","Information")
             }
@@ -109,8 +109,6 @@ Class Main {
     Hidden [Boolean] RestartRequired($FeatureName) {
         # Control variable
         [Boolean] $Return = $false
-        # Report
-        $this.ozoLogger.Write("Determining if a restart is required.","Information")
         # Determine if feature is present
         If ((Get-WindowsOptionalFeature -Online -FeatureName $FeatureName).RestartRequired -eq "Required") {
             # Restart is required
