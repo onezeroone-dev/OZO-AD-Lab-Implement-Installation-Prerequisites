@@ -66,6 +66,8 @@ Class Main {
     Main($FeatureName,$InternalIP,$InternalSwitchName,$LocalGroup,$OZOADLabISOs,$PrefixLength,$Subnet) {
         # Create a logger object
         $this.ozoLogger = (New-OZOLogger)
+        # Log a process start message
+        $this.ozoLogger.Write("Process starting.","Information")
         # Call ValidateEnvironment to determine if we can proceed
         If ($this.ValidateEnvironment() -eq $true) {
             # Determine if thefeature is not installed
@@ -89,11 +91,16 @@ Class Main {
             If ($this.prerequisitesSatisfied -eq $true) {
                 # All prerequisites are satisfied
                 $this.ozoLogger.Write("All prerequisites are satisfied. Please see https://onezeroone.dev/active-directory-lab-part-iii-create-the-virtual-machines for the next steps.","Information")
+            } Else {
+                # Not all prerequisites are satisfied
+                $this.ozoLogger.Write("Not all prerequisites are satisfied. Please see the One Zero One event log for details.","Error")
             }
         } Else {
             # Environment did not validate
             $this.ozoLogger.Write("The environment did not validate.","Error")
         }
+        # Log a process complete message
+        $this.ozoLogger.Write("Process complete.","Information")
     }
     # METHODS: Environment validation method
     Hidden [Boolean] ValidateEnvironment() {
