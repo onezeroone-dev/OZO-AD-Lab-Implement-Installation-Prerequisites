@@ -217,6 +217,9 @@ Class Main {
                 $this.ozoLogger.Write(("ISO not found: " + $ISO),"Error")
                 $Return = $false
             }
+        } Else {
+            # Get-VMSwitch cmdlet is not available
+            $Return = $false
         }
         # Return
         return $Return
