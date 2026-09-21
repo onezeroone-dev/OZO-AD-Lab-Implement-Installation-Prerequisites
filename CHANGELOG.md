@@ -2,6 +2,7 @@
 
 |Date|Version|Comment|
 |----|-------|-------|
+|2026-Sep-21|1.1.2|Documentation updates.|
 |2026-Sep-21|1.1.1|Minor bugfix.|
 |2026-Sep-20|1.1.0|Replace internal and external switches with Hyper-V NAT switch; add check for the existence of the required ISOs.|
 |2026-Sep-19|1.0.0|Initial release.|
