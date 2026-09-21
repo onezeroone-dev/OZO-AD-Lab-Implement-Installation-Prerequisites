@@ -49,8 +49,8 @@
     [Parameter(Mandatory=$false,HelpMessage="The name of the internal virtual switch.")][String] $InternalSwitchName = "OZO AD Lab NAT",
     [Parameter(Mandatory=$false)][String] $LocalGroup = "Hyper-V Administrators",
     [Parameter(Mandatory=$false,HelpMessage="A hashtable of ISO filenames and their corresponding download URIs.")][Array] $OZOADLabISOs = @(
-        (Join-Path -Path $Env:DOWNLOADS -ChildPath "OZO-AD-Lab-Client.iso"),
-        (Join-Path -Path $Env:DOWNLOADS -ChildPath "OZO-AD-Lab-Server.iso")
+        (Join-Path -Path $Env:UserProfile -ChildPath "Downloads\OZO-AD-Lab-Client.iso"),
+        (Join-Path -Path $Env:UserProfile -ChildPath "Downloads\OZO-AD-Lab-Server.iso")
     ),
     [Parameter(Mandatory=$false,HelpMessage="The prefix length for the lab network subnet.")][Int32] $PrefixLength = 24,
     [Parameter(Mandatory=$false,HelpMessage="The subnet for the lab network.")][String] $Subnet = "172.16.1.0"
@@ -217,9 +217,6 @@ Class Main {
                 $this.ozoLogger.Write(("ISO not found: " + $ISO),"Error")
                 $Return = $false
             }
-        } Else {
-            # Get-VMSwitch cmdlet is not available
-            $Return = $false
         }
         # Return
         return $Return
