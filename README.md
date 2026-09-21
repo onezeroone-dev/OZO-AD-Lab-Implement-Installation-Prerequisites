@@ -29,7 +29,7 @@ ozo-ad-lab-implement-installation-prerequisites
 |`InternalIP`|The internal IP address for the lab network. Default is `172.16.1.1`.|
 |`InternalSwitchName`|The name of the internal virtual switch. Default is _OZO AD Lab NAT_.|
 |`LocalGroup`|The local group to which the current user should be added. Default is _Hyper-V Administrators_.|
-|`OZOADLabISOs`|An array of ISO filenames for the lab environment. Default is `OZO-AD-Lab-Client.iso` and `OZO-AD-Lab-Server.|iso` in the user's Downloads folder.|
+|`OZOADLabISOs`|An array of ISO filenames for the lab environment. Default is `OZO-AD-Lab-Client.iso` and `OZO-AD-Lab-Server.iso` in the user's Downloads folder.|
 |`PrefixLength`|The prefix length for the lab network subnet. Default is 24.|
 |`Subnet`|The subnet for the lab network. Default is `172.16.1.0`.|
 
