@@ -48,7 +48,7 @@
     [Parameter(Mandatory=$false,HelpMessage="The internal IP address for the lab network.")][String] $InternalIP = "172.16.1.1",
     [Parameter(Mandatory=$false,HelpMessage="The name of the internal virtual switch.")][String] $InternalSwitchName = "OZO AD Lab NAT",
     [Parameter(Mandatory=$false)][String] $LocalGroup = "Hyper-V Administrators",
-    [Parameter(Mandatory=$false,HelpMessage="A hashtable of ISO filenames and their corresponding download URIs.")][Array] $OZOADLabISOs = @(
+    [Parameter(Mandatory=$false,HelpMessage="An array of ISO filenames for the lab environment.")][Array] $OZOADLabISOs = @(
         (Join-Path -Path $Env:UserProfile -ChildPath "Downloads\OZO-AD-Lab-Client.iso"),
         (Join-Path -Path $Env:UserProfile -ChildPath "Downloads\OZO-AD-Lab-Server.iso")
     ),
