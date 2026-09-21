@@ -1,7 +1,7 @@
 #Requires -Modules @{ModuleName="OZO"; ModuleVersion="1.7.0"},OZOLogger -RunAsAdministrator
 
 <#PSScriptInfo
-    .VERSION 1.1.0
+    .VERSION 1.1.1
     .GUID 63ebd3a1-0d72-4090-9226-10db30d2e82f
     .AUTHOR Andy Lievertz <alievertz@onezeroone.dev>
     .COMPANYNAME One Zero One
@@ -49,8 +49,8 @@
     [Parameter(Mandatory=$false,HelpMessage="The name of the internal virtual switch.")][String] $InternalSwitchName = "OZO AD Lab NAT",
     [Parameter(Mandatory=$false)][String] $LocalGroup = "Hyper-V Administrators",
     [Parameter(Mandatory=$false,HelpMessage="A hashtable of ISO filenames and their corresponding download URIs.")][Array] $OZOADLabISOs = @(
-        (Join-Path -Path $Env:DOWNLOADS -ChildPath "OZO-AD-Lab-Client.iso"),
-        (Join-Path -Path $Env:DOWNLOADS -ChildPath "OZO-AD-Lab-Server.iso")
+        (Join-Path -Path $Env:UserProfile -ChildPath "Downloads\OZO-AD-Lab-Client.iso"),
+        (Join-Path -Path $Env:UserProfile -ChildPath "Downloads\OZO-AD-Lab-Server.iso")
     ),
     [Parameter(Mandatory=$false,HelpMessage="The prefix length for the lab network subnet.")][Int32] $PrefixLength = 24,
     [Parameter(Mandatory=$false,HelpMessage="The subnet for the lab network.")][String] $Subnet = "172.16.1.0"
@@ -217,9 +217,6 @@ Class Main {
                 $this.ozoLogger.Write(("ISO not found: " + $ISO),"Error")
                 $Return = $false
             }
-        } Else {
-            # Get-VMSwitch cmdlet is not available
-            $Return = $false
         }
         # Return
         return $Return
