@@ -1,7 +1,7 @@
 #Requires -Modules @{ModuleName="OZO"; ModuleVersion="1.7.0"},OZOLogger -RunAsAdministrator
 
 <#PSScriptInfo
-    .VERSION 1.1.1
+    .VERSION 1.1.2
     .GUID 63ebd3a1-0d72-4090-9226-10db30d2e82f
     .AUTHOR Andy Lievertz <alievertz@onezeroone.dev>
     .COMPANYNAME One Zero One
@@ -48,7 +48,7 @@
     [Parameter(Mandatory=$false,HelpMessage="The internal IP address for the lab network.")][String] $InternalIP = "172.16.1.1",
     [Parameter(Mandatory=$false,HelpMessage="The name of the internal virtual switch.")][String] $InternalSwitchName = "OZO AD Lab NAT",
     [Parameter(Mandatory=$false)][String] $LocalGroup = "Hyper-V Administrators",
-    [Parameter(Mandatory=$false,HelpMessage="A hashtable of ISO filenames and their corresponding download URIs.")][Array] $OZOADLabISOs = @(
+    [Parameter(Mandatory=$false,HelpMessage="An array of ISO filenames for the lab environment.")][Array] $OZOADLabISOs = @(
         (Join-Path -Path $Env:UserProfile -ChildPath "Downloads\OZO-AD-Lab-Client.iso"),
         (Join-Path -Path $Env:UserProfile -ChildPath "Downloads\OZO-AD-Lab-Server.iso")
     ),
@@ -66,6 +66,8 @@ Class Main {
     Main($FeatureName,$InternalIP,$InternalSwitchName,$LocalGroup,$OZOADLabISOs,$PrefixLength,$Subnet) {
         # Create a logger object
         $this.ozoLogger = (New-OZOLogger)
+        # Log a process start message
+        $this.ozoLogger.Write("Process starting.","Information")
         # Call ValidateEnvironment to determine if we can proceed
         If ($this.ValidateEnvironment() -eq $true) {
             # Determine if thefeature is not installed
@@ -89,11 +91,16 @@ Class Main {
             If ($this.prerequisitesSatisfied -eq $true) {
                 # All prerequisites are satisfied
                 $this.ozoLogger.Write("All prerequisites are satisfied. Please see https://onezeroone.dev/active-directory-lab-part-iii-create-the-virtual-machines for the next steps.","Information")
+            } Else {
+                # Not all prerequisites are satisfied
+                $this.ozoLogger.Write("Not all prerequisites are satisfied. Please see the One Zero One event log for details.","Error")
             }
         } Else {
             # Environment did not validate
             $this.ozoLogger.Write("The environment did not validate.","Error")
         }
+        # Log a process complete message
+        $this.ozoLogger.Write("Process complete.","Information")
     }
     # METHODS: Environment validation method
     Hidden [Boolean] ValidateEnvironment() {
